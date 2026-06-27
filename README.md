@@ -34,3 +34,16 @@
 |    战斗   | 待修复 | 待修复  | 待更新至新版本 |
 |   定向寻访  | 修复中 | 50%  |  |
 |  公开寻访   | 修复中 | 未完成  |  |
+
+# 编译方法
+## 修复一个mvn报公开类错误问题
+```
+cd cd src/main/java/com/hypergryph/arknights/
+mv ArKnightsApplication.java ArknightsApplication.java
+```
+## 开始编译
+```
+chmod +x ./mvnw
+
+./mvnw clean package
+```

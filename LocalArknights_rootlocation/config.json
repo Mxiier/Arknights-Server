@@ -1,7 +1,7 @@
 {
 	"server":{
-		"url":"http://127.0.0.1:8443",
-		"http":8443,
+		"url":"http://127.0.0.1:10029",
+		"http":10029,
 		"https":36650,
 		"captcha":false,
 		"enableServer":true,
@@ -11,12 +11,16 @@
 	"timer": {
 		"set_server_time": "-1"
 	},
+	"pay": {
+		"cashDoubleCount": false,
+		"time": 3
+	},
 	"database":{
-		"host":"ht.furryproject.com",
+		"host": "localhost",
 		"port":3306,
 		"dbname":"arknights",
 		"user":"ark",
-		"password":"Loongling120312!",
+		"password":"arknights",
 		"extra":"useSSL=false&useUnicode=true&characterEncoding=utf-8&autoReconnect=true&allowMultiQueries=true&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
 	},
 	"roguelike":{
@@ -31,42 +35,61 @@
 	},
 	"version":{
 		"android":{
-			"resVersion":"26-01-23-10-05-06_762d08",
-			"clientVersion":"2.6.91"
+			"resVersion":"26-10-08-04-51-28-56071834",
+			"clientVersion":"2.7.81"
 		},
 		"ios":{
-			"resVersion":"21-12-20-11-24-40-d7328a",
-			"clientVersion":"1.7.01"
+			"resVersion":"26-10-08-04-42-09-43912705",
+			"clientVersion":"2.7.81"
+		},
+		"Windows":{
+			"resVersion":"26-10-08-04-48-58-88290222",
+			"clientVersion":"2.7.81"
+		},
+		"global": {
+			"resVersion": "26-01-13-09-42-53_63eee8",
+			"clientVersion": "32.6.21"
 		}
 	},
 	"assets":{
-		"enableRedirect":true,
-		"redirectUrl":"https://ak.hycdn.cn/assetbundle/official/Android/assets/26-01-23-10-05-06_762d08",
+		"enableRedirect":false,
+		"cdnBase":"https://ak.hycdn.cn/assetbundle/official",
+		"redirectUrl":{
+			"Android": "https://ak.hycdn.cn/assetbundle/official/Android/assets/26-10-08-04-51-28-56071834",
+			"Windows": "https://ak.hycdn.cn/assetbundle/official/Windows/assets/26-10-08-04-48-58-88290222",
+			"ios": "https://ak.hycdn.cn/assetbundle/official/iOS/assets/26-10-08-04-42-09-43912705",
+			"global": ""
+		},
 		"localFiles":[]
 	},
-	"remote":{
+	"remote": {
+		"fapv2": 1,
 		"HGDownload_1": 10000,
 		"HGDownload_2": 10000,
+		"bakeMuzzleEnableRate": 10000,
+		"enemyBakeMuzzleEnableRate": 10000,
+		"SixStarBakeMuzzleEnableRate": 10000,
 		"enableGameBI": true,
-		"enableMarquee": false,
-		"enableNavtieLicense": false,
-		"fapv2": 1
+		"showRecordNumber": false,
+		"enableNativeLicense": false
 	},
+	"clientFuncVer": "78.0.0",
+	"file_path": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/77.0/update/1/1/Windows/77.0.0_o2Ri5AN2Z7XXjdtF/files",
 	"network":{
-		"sign":"qDOOWuetaSKR+N1pdy9X48gfoD3yIcZJqaiMVztL4t8PbIC2s/q4PjzqNsfK72GPkC/s/lgNyutB/1WI2OV9MhU+NxhDO20xcLOWfnwrSPw5myYrG7h3bwtBbM1w68bZQFQEVXwARBjZrKhdUWQZ/zZkOXpTimg2njjg1Bc6+pY=",
 		"configVer":"5",
-		"funcVer":"V069",
+		"funcVer":"V078",
 		"configs":{
-			"V069":{
+			"V078":{
 				"override":true,
 				"network":{
-					"gs":"{server}",
-					"as":"{server}",
-					"u8":"{server}/u8",
-					"hu":"{server}/assetbundle/official",
-					"hv":"{server}/config/prod/official/{0}/version",
-					"rc":"{server}/config/prod/official/remote_config",
-					"an":"{server}/config/prod/announce_meta/{0}/announcement.meta.json",
+					"devsdk": false,
+					"gs":"http://127.0.0.1:10029",
+					"as":"http://127.0.0.1:10029",
+					"u8":"http://127.0.0.1:10029/u8",
+					"hu":"http://127.0.0.1:10029/assetbundle/official",
+					"hv":"http://127.0.0.1:10029/config/prod/official/{0}/version",
+					"rc":"http://127.0.0.1:10029/config/prod/official/remote_config",
+					"an":"http://127.0.0.1:10029/config/prod/announce_meta/{0}/announcement.meta.json",
 					"prean":"https://ak-webview.hypergryph.com",
 					"sl":"https://ak.hypergryph.com/protocol/service",
 					"of":"https://ak.hypergryph.com/index.html",

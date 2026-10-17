@@ -1,8 +1,10 @@
 package com.hypergryph.arknights;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.hypergryph.arknights.core.dao.userDao;
 import com.hypergryph.arknights.core.dao.mailDao;
+import com.hypergryph.arknights.core.dao.orderIdDao;
 import com.hypergryph.arknights.command.CommandManager;
 import com.hypergryph.arknights.command.ICommandSender;
 import com.hypergryph.arknights.core.file.IOTools;
@@ -20,6 +22,15 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingRequestWrapper;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -50,7 +61,7 @@ public class ArknightsApplication {
     public static JSONObject charwordTable;
     public static JSONObject CrisisData;
     public static JSONObject CrisisV2Data;
-    public static JSONObject CashGoodList;
+    public static JSONArray CashGoodList;
     public static JSONObject GPGoodList;
     public static JSONObject LowGoodList;
     public static JSONObject HighGoodList;
@@ -105,9 +116,9 @@ public class ArknightsApplication {
         }
 
         LOGGER.info("数据库版本 " + MysqlVersion);
-        LOGGER.info("服务端版本 0.4.4Alpha");
-        LOGGER.info("客户端版本 2.4.61");
-        LOGGER.info("构建时间 2025年4月6日21:49:05");
+        LOGGER.info("服务端版本 0.4.0 Alpha-fixed-1");
+        LOGGER.info("客户端版本 2.7.81Win");
+        LOGGER.info("构建时间 2026年10月15日 22:22:54");
         if (serverConfig.getJSONObject("server").getString("GMKey") == null) {
             serverConfig.getJSONObject("server").put("GMKey", randomPwd.getRandomPwd(64));
             IOTools.SaveJsonFile(System.getProperty("user.dir") + "/config.json", serverConfig);
@@ -115,14 +126,19 @@ public class ArknightsApplication {
         }
 
         LOGGER.info("管理员密钥 " + serverConfig.getJSONObject("server").getString("GMKey"));
-        if (userDao.tableExists("account").size() == 0) {
+        if (userDao.tableExists("account").isEmpty()) {
             userDao.insertTable();
             LOGGER.info("玩家数据库不存在，已生成");
         }
 
-        if (userDao.tableExists("mail").size() == 0) {
+        if (userDao.tableExists("mail").isEmpty()) {
             mailDao.insertTable();
             LOGGER.info("邮件数据库不存在，已生成");
+        }
+
+        if(orderIdDao.tableExists("orders").isEmpty()) {
+            orderIdDao.insertTable();
+            LOGGER.info("订单数据库不存在，已生成");
         }
 
         getTimestamp();
@@ -177,7 +193,24 @@ public class ArknightsApplication {
             return System.currentTimeMillis() / 1000L; // 返回当前时间戳（秒）
         }
 
-        // 定义支持的时间格式
+        try {
+            long timestamp = Long.parseLong(ts);
+            // 如果是秒级时间戳（10位）或毫秒级（13位）
+            if (timestamp > 0) {
+                if (timestamp > 9999999999L) {
+                    // 毫秒级时间戳（13位）
+                    LOGGER.info("使用毫秒时间戳: {}", timestamp);
+                    return timestamp / 1000L;
+                } else {
+                    // 秒级时间戳（10位）
+                    LOGGER.info("使用秒时间戳: {}", timestamp);
+                    return timestamp;
+                }
+            }
+        } catch (NumberFormatException ignored) {
+            // 不是纯数字，继续尝试解析为时间字符串
+        }
+
         List<String> timeFormats = List.of(
                 "yyyy/MM/dd HH:mm:ss",
                 "ddMMyyyy HH:mm:ss",
@@ -186,7 +219,6 @@ public class ArknightsApplication {
                 "yyyyMMdd HH:mm:ss"
         );
 
-        // 遍历尝试解析时间字符串
         for (String format : timeFormats) {
             try {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
@@ -194,7 +226,6 @@ public class ArknightsApplication {
                 long unixTime = dt.atZone(ZoneId.systemDefault()).toEpochSecond(); // 转换为 Unix 时间戳（秒）
                 return unixTime == -1 ? System.currentTimeMillis() / 1000L : unixTime; // -1 时返回真实时间
             } catch (Exception ignored) {
-                // 解析失败则尝试下一个格式
             }
         }
         return System.currentTimeMillis() / 1000L;
@@ -206,6 +237,18 @@ public class ArknightsApplication {
             IP_SECRET_MAP.put(ip, secret);
         }
 
+    public static int getCharRarity(String charId) {
+        String rarity = characterJson.getJSONObject(charId).getString("rarity");
+        return Integer.parseInt(rarity.substring(5)) - 1;
+    }
+
+    public static int resolveGoodType(String product_id){
+        if (product_id == null) return -1;
+        if (product_id.startsWith("CS")) return 0;
+        if (product_id.startsWith("GP")) return 1;
+        return -1;
+    }
+
     @Configuration
     public class WebConfig implements WebMvcConfigurer {
 
@@ -215,6 +258,25 @@ public class ArknightsApplication {
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
             registry.addInterceptor(requestLoggerInterceptor);
+        }
+
+        // 把所有请求包装成 ContentCachingRequestWrapper，使 afterCompletion 能读到 body
+        @Bean
+        public FilterRegistrationBean<OncePerRequestFilter> contentCachingFilter() {
+            OncePerRequestFilter filter = new OncePerRequestFilter() {
+                @Override
+                protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+                    if (request instanceof ContentCachingRequestWrapper) {
+                        filterChain.doFilter(request, response);
+                    } else {
+                        filterChain.doFilter(new ContentCachingRequestWrapper(request), response);
+                    }
+                }
+            };
+            FilterRegistrationBean<OncePerRequestFilter> bean = new FilterRegistrationBean<>(filter);
+            bean.addUrlPatterns("/*");
+            bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+            return bean;
         }
     }
 
@@ -240,7 +302,7 @@ public class ArknightsApplication {
         skinGoodList = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/shop/SkinGoodList.json");
         skinTable = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/excel/skin_table.json").getJSONObject("charSkins");
         charwordTable = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/excel/charword_table.json");
-        CashGoodList = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/shop/CashGoodList.json");
+        CashGoodList = IOTools.ReadJsonArray(System.getProperty("user.dir") + "/data/shop/CashGoodList.json");
         GPGoodList = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/shop/GPGoodList.json");
         normalGachaData = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/normalGacha.json");
         LowGoodList = IOTools.ReadJsonFile(System.getProperty("user.dir") + "/data/shop/LowGoodList.json");
@@ -274,7 +336,7 @@ public class ArknightsApplication {
         charwordTable = new JSONObject();
         CrisisData = new JSONObject();
         CrisisV2Data = new JSONObject();
-        CashGoodList = new JSONObject();
+        CashGoodList = new JSONArray();
         GPGoodList = new JSONObject();
         LowGoodList = new JSONObject();
         HighGoodList = new JSONObject();

@@ -49,12 +49,12 @@ public class account {
                 result.put("result", 1);
                 result.put("error", "您已被此服务器封禁");
                 return result;
-            } else if (!clientVersion.equals(ArknightsApplication.serverConfig.getJSONObject("version").getJSONObject("android").getString("clientVersion"))) {
+            } else if (!clientVersion.equals(ArknightsApplication.serverConfig.getJSONObject("version").getJSONObject("Windows").getString("clientVersion"))) {
                 result = new JSONObject(true);
                 result.put("result", 2);
                 result.put("error", "客户端版本需要更新");
                 return result;
-            } else if (!assetsVersion.equals(ArknightsApplication.serverConfig.getJSONObject("version").getJSONObject("android").getString("resVersion"))) {
+            } else if (!assetsVersion.equals(ArknightsApplication.serverConfig.getJSONObject("version").getJSONObject("Windows").getString("resVersion"))) {
                 result = new JSONObject(true);
                 result.put("result", 4);
                 result.put("error", "资源需要更新");
@@ -89,9 +89,7 @@ public class account {
         String clientIp = ArknightsApplication.getIpAddr(request);
         LOGGER.info("[/" + clientIp + "] /account/syncData");
         String secret = ArknightsApplication.getSecretByIP(clientIp);
-        long uid = 0;
-        List<Account> Accounts = userDao.queryAccountBySecret(String.valueOf(uid));
-
+        long uid = userDao.queryUidBySecret(secret);
         // **检查服务器状态**
         if (!ArknightsApplication.enableServer) {
             response.setStatus(400);
@@ -164,9 +162,10 @@ public class account {
             value = {"/syncStatus"},
             produces = {"application/json;charset=UTF-8"}
     )
-    public JSONObject SyncStatus(HttpServletResponse response, HttpServletRequest request) {
+    public JSONObject SyncStatus(@RequestBody JSONObject JsonBody, HttpServletResponse response, HttpServletRequest request) {
         String clientIp = ArknightsApplication.getIpAddr(request);
         LOGGER.info("[/" + clientIp + "] /account/syncStatus");
+        LOGGER.info("SyncS" + JsonBody);
         String secret = ArknightsApplication.getSecretByIP(clientIp);
         if (!ArknightsApplication.enableServer) {
             response.setStatus(400);
@@ -231,20 +230,39 @@ public class account {
                     playerDataDelta.put("deleted", new JSONObject(true));
                     result.put("playerDataDelta", playerDataDelta);
                     JSONObject result_announcement = new JSONObject(true);
-                    result_announcement.put("4", ArknightsApplication.serverConfig.getJSONObject("announce").getJSONObject("status"));
+                    result_announcement.put("1", new JSONObject());
+                    result_announcement.put("2", new JSONObject());
+                    JSONObject four = new JSONObject(true);
+                    four.put("announcementVersion", 2526);
+                    four.put("announcementPopUpVersion", 3585);
+                    result_announcement.put("4", four);
+                    result_announcement.put("128", new JSONObject());
+                    result_announcement.put("512", new JSONObject());
+                    result_announcement.put("1024", new JSONObject());
+                    JSONObject twoH = new JSONObject(true);
+                    twoH.put("shop", new JSONArray());
+                    twoH.put("gacha", new JSONArray());
+                    result_announcement.put("2048", twoH);
                     result.put("result", result_announcement);
-                    result.put("ts", ArknightsApplication.getTimestamp());
                     return result;
                 }
             }
         }
     }
 
-    @PostMapping({"/syncPushMessage"})
-    public JSONObject SyncPushMessage() {
-        JSONObject json = new JSONObject();
-        json.put("code", 200);
-        json.put("msg", "OK");
-        return json;
+    @PostMapping(
+            value = {"/syncPushMessage"},
+            produces = {"application/json;charset=UTF-8"}
+    )
+    public JSONObject SyncPushMessage(@RequestBody JSONObject JsonBody, HttpServletResponse response, HttpServletRequest request) {
+        String clientIp = ArknightsApplication.getIpAddr(request);
+        LOGGER.info("[/" + clientIp + "] /account/syncStatus");
+        LOGGER.info("syncPM:" + JsonBody);
+        JSONObject result = new JSONObject();
+        JSONObject playerDataDelta = new JSONObject();
+        playerDataDelta.put("modified", new JSONObject());
+        playerDataDelta.put("deleted", new JSONObject());
+        result.put("playerDataDelta", playerDataDelta);
+        return result;
     }
 }

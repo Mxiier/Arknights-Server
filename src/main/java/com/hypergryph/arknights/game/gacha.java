@@ -12,10 +12,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/gacha")
@@ -30,9 +28,10 @@ public class gacha {
 
 
     @PostMapping("/syncNormalGacha")
-    public JSONObject syncNormalGacha(HttpServletRequest request, HttpServletResponse response) {
+    public JSONObject syncNormalGacha(@RequestBody JSONObject JsonBody, HttpServletRequest request, HttpServletResponse response) {
         String clientIp = ArknightsApplication.getIpAddr(request);
         ArknightsApplication.LOGGER.info("[/" + clientIp + "] /gacha/syncNormalGacha");
+        ArknightsApplication.LOGGER.info("syncNG" + JsonBody);
 
         if (!ArknightsApplication.enableServer) {
             response.setStatus(400);
@@ -55,7 +54,6 @@ public class gacha {
         JSONObject result = new JSONObject();
         JSONObject playerDataDelta = new JSONObject();
         JSONObject modified = new JSONObject();
-        modified.put("recruit", JSONObject.parseObject(account.getUser()).getJSONObject("recruit"));
         playerDataDelta.put("modified", modified);
         playerDataDelta.put("deleted", new JSONObject());
         result.put("playerDataDelta", playerDataDelta);
@@ -67,6 +65,7 @@ public class gacha {
     public JSONObject normalGacha(@RequestBody JSONObject jsonBody, HttpServletRequest request, HttpServletResponse response) {
         String clientIp = ArknightsApplication.getIpAddr(request);
         ArknightsApplication.LOGGER.info("[/" + clientIp + "] /gacha/normalGacha");
+        ArknightsApplication.LOGGER.info("normalG:" + jsonBody);
 
         if (!ArknightsApplication.enableServer) {
             response.setStatus(400);
@@ -137,6 +136,7 @@ public class gacha {
     public JSONObject finishNormalGacha(@RequestBody JSONObject jsonBody, HttpServletRequest request, HttpServletResponse response) {
         String clientIp = ArknightsApplication.getIpAddr(request);
         ArknightsApplication.LOGGER.info("[/" + clientIp + "] /gacha/finishNormalGacha");
+        ArknightsApplication.LOGGER.info("finishNG:" + jsonBody);
 
         if (!ArknightsApplication.enableServer) {
             response.setStatus(400);
@@ -185,6 +185,7 @@ public class gacha {
     public JSONObject getPoolDetail(@RequestBody JSONObject jsonBody, HttpServletResponse response) {
         String poolId = jsonBody.getString("poolId");
         String poolPath = "data/gacha/" + poolId + ".json";
+        ArknightsApplication.LOGGER.info("getPoolD:" + jsonBody);
 
 
         JSONObject poolData = IOTools.ReadJsonFile(poolPath);
@@ -200,6 +201,7 @@ public class gacha {
     public JSONObject advancedGacha(@RequestBody JSONObject jsonBody, HttpServletRequest request, HttpServletResponse response) {
         String clientIp = ArknightsApplication.getIpAddr(request);
         ArknightsApplication.LOGGER.info("[/" + clientIp + "] /gacha/advancedGacha");
+        ArknightsApplication.LOGGER.info("advanceG:" + jsonBody);
 
         if (!ArknightsApplication.enableServer) {
             response.setStatus(400);
@@ -233,7 +235,7 @@ public class gacha {
         else{
             JSONObject normal = gacha.getJSONObject("normal");
             int cnt = normal.getJSONObject(poolId).getIntValue("cnt");
-            normal.getJSONObject(poolId).put("cnt", cnt - 1);
+            normal.getJSONObject(poolId).put("cnt", cnt + 1);
             userDao.setUserData(uid, userdata);
         }
 
@@ -266,12 +268,18 @@ public class gacha {
 
         String poolId = jsonBody.getString("poolId");
         int useTkt = jsonBody.getIntValue("useTkt");
-        int diamondCost = poolId.startsWith("BOOT") ? 3800 : 6000;
+        int diamondCost = poolId.startsWith("BOOT") ? 380 : 600;
 
         return performAdvancedGacha(account, poolId, "tenGachaTicket", diamondCost, 10, useTkt, response);
     }
 
-    // ==================== 私有方法 ====================
+    @GetMapping("/activity")
+    public JSONObject activity(@RequestBody JSONObject jsonBody, HttpServletRequest request, HttpServletResponse response) {
+        String clientIp = ArknightsApplication.getIpAddr(request);
+        ArknightsApplication.LOGGER.info("[/" + clientIp + "] /activity");
+        ArknightsApplication.LOGGER.info("/gache/activity:" + jsonBody);
+        return new JSONObject();
+    }
 
     private JSONObject createErrorResponse(int code, String message) {
         JSONObject result = new JSONObject();
@@ -427,7 +435,7 @@ public class gacha {
             new_skils.put("specializeLevel", 0);
             new_skils.put("completeUpgradeTime", -1);
 
-            if (skilsArray.getJSONObject(i).getJSONObject("unlockCond").getIntValue("phase") == 0) {
+            if (skilsArray.getJSONObject(i).getJSONObject("unlockCond").getString("phase").equals("PHASE_0")) {
                 new_skils.put("unlock", 1);
             } else {
                 new_skils.put("unlock", 0);
@@ -453,12 +461,15 @@ public class gacha {
         for (Object skillObj : charInfo.getJSONArray("skills")) {
             JSONObject skill = (JSONObject) skillObj;
             JSONObject newSkill = new JSONObject();
+            JSONObject unlockCond = skill.getJSONObject("unlockCond");
+
+            String phase = unlockCond != null ? unlockCond.getString("phase") : "";
+            int unlock = "PHASE_0".equals(phase) ? 1 : 0;
             newSkill.put("skillId", skill.getString("skillId"));
             newSkill.put("state", 0);
             newSkill.put("specializeLevel", 0);
             newSkill.put("completeUpgradeTime", -1);
-            newSkill.put("unlock",
-                    skill.getJSONObject("unlockCond").getIntValue("phase") == 0 ? 1 : 0);
+            newSkill.put("unlock", unlock);
             skills.add(newSkill);
         }
         charData.put("skills", skills);
@@ -537,6 +548,7 @@ public class gacha {
         // 读取卡池数据
         String poolPath = "data/gacha/" + poolId + ".json";
         JSONObject poolData = IOTools.ReadJsonFile(poolPath);
+        ArknightsApplication.LOGGER.info("PoolData" + poolData);
         if (poolData == null) {
             poolData = IOTools.ReadJsonFile("data/gacha/DEFAULT.json");
             if (poolData == null) {
@@ -558,7 +570,7 @@ public class gacha {
 
         JSONArray gachaResults = new JSONArray();
         JSONObject chars = userData.getJSONObject("troop").getJSONObject("chars");
-        JSONObject buildingChars = userData.getJSONObject("troop").getJSONObject("building").getJSONObject("chars");
+        JSONObject buildingChars = userData.getJSONObject("building").getJSONObject("chars");
         JSONArray availCharInfo = poolData.getJSONObject("detailInfo")
                 .getJSONObject("availCharInfo")
                 .getJSONArray("perAvailList");
@@ -601,17 +613,28 @@ public class gacha {
         } else {
             result.put("gachaResultList", gachaResults);
         }
+        JSONObject gacha = userData.getJSONObject("gacha");
+        if(poolId.startsWith("BOOT")) {
+            int cnt = gacha.getJSONObject("newbee").getIntValue("cnt");
+            if(cnt - drawCount < 0){
+                return createErrorResponse(400, "新手池抽卡数不足");
+            }
+            else {
+                gacha.getJSONObject("newbee").put("cnt", gacha.getJSONObject("newbee").getIntValue("cnt") - drawCount);
+                userDao.setUserData(uid, userData);
+            }
+        }
 
         JSONObject playerDataDelta = new JSONObject();
         JSONObject modified = new JSONObject();
         modified.put("status", status);
         modified.put("troop", userData.getJSONObject("troop"));
         modified.put("inventory", userData.getJSONObject("inventory"));
-        modified.put("gacha", userData.getJSONObject("gacha"));
+        modified.put("gacha", gacha);
         playerDataDelta.put("modified", modified);
         playerDataDelta.put("deleted", new JSONObject());
         result.put("playerDataDelta", playerDataDelta);
-
+        ArknightsApplication.LOGGER.info("result" + result);
         return result;
     }
 
